@@ -1417,6 +1417,8 @@ static void rd_kafka_stats_emit_all (rd_kafka_t *rk) {
 		_st_printf("%s\"%s\": { "/*open broker*/
 			   "\"name\":\"%s\", "
 			   "\"nodeid\":%"PRId32", "
+                           "\"nodename\":\"%s\", "
+                           "\"source\":\"%s\", "
 			   "\"state\":\"%s\", "
                            "\"stateage\":%"PRId64", "
 			   "\"outbuf_cnt\":%i, "
@@ -1442,6 +1444,8 @@ static void rd_kafka_stats_emit_all (rd_kafka_t *rk) {
 			   rkb->rkb_name,
 			   rkb->rkb_name,
 			   rkb->rkb_nodeid,
+                           rkb->rkb_nodename,
+                           rd_kafka_confsource2str(rkb->rkb_source),
 			   rd_kafka_broker_state_names[rkb->rkb_state],
                            rkb->rkb_ts_state ? now - rkb->rkb_ts_state : 0,
 			   rd_atomic32_get(&rkb->rkb_outbufs.rkbq_cnt),
@@ -1706,10 +1710,8 @@ static int rd_kafka_thread_main (void *arg) {
                                      1000ll,
                                      rd_kafka_metadata_refresh_cb, NULL);
 
-        if (rk->rk_cgrp) {
-                rd_kafka_cgrp_reassign_broker(rk->rk_cgrp);
+        if (rk->rk_cgrp)
                 rd_kafka_q_fwd_set(rk->rk_cgrp->rkcg_ops, rk->rk_ops);
-        }
 
         if (rd_kafka_is_idempotent(rk))
                 rd_kafka_idemp_init(rk);
@@ -3406,10 +3408,10 @@ static void rd_kafka_dump0 (FILE *fp, rd_kafka_t *rk, int locks) {
                         RD_KAFKAP_STR_PR(rkcg->rkcg_group_id),
                         rd_kafka_cgrp_state_names[rkcg->rkcg_state],
                         rkcg->rkcg_flags);
-                fprintf(fp, "   coord_id %"PRId32", managing broker %s\n",
+                fprintf(fp, "   coord_id %"PRId32", broker %s\n",
                         rkcg->rkcg_coord_id,
-                        rkcg->rkcg_rkb ?
-                        rd_kafka_broker_name(rkcg->rkcg_rkb) : "(none)");
+                        rkcg->rkcg_curr_coord ?
+                        rd_kafka_broker_name(rkcg->rkcg_curr_coord):"(none)");
 
                 fprintf(fp, "  toppars:\n");
                 RD_LIST_FOREACH(s_rktp, &rkcg->rkcg_toppars, i) {
